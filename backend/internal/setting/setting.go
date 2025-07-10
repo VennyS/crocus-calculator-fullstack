@@ -2,11 +2,16 @@ package setting
 
 import (
 	"crocus-calculator/internal/lib/env"
+	"crocus-calculator/internal/lib/logger"
 	cfg "crocus-calculator/internal/setting/config"
+	"fmt"
+
+	"go.uber.org/zap"
 )
 
 type App struct {
-	cfg cfg.Config
+	cfg    cfg.Config
+	logger *zap.SugaredLogger
 }
 
 func (a App) LoadConfig() {
@@ -26,6 +31,16 @@ func (a App) LoadConfig() {
 	}
 }
 
+func (a *App) SetupLogger() {
+	var err error
+	a.logger, err = logger.Init(a.cfg.AppEnv)
+
+	if err != nil {
+		panic(fmt.Sprintf("Failed to initialize logger: %v", err))
+	}
+}
+
 func (a App) InitApp() {
 	a.LoadConfig()
+	a.SetupLogger()
 }
