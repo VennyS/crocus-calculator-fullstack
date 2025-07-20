@@ -1,12 +1,19 @@
 package setting
 
 import (
+	"crocus-calculator/internal/api/auth"
 	"crocus-calculator/internal/lib/env"
+	"crocus-calculator/internal/lib/hasher"
 	"crocus-calculator/internal/lib/logger"
+	"crocus-calculator/internal/lib/validator"
 	cfg "crocus-calculator/internal/setting/config"
 	"crocus-calculator/internal/storage"
+	"crocus-calculator/internal/storage/repository"
 	"fmt"
+	"net/http"
 
+	"github.com/go-chi/chi"
+	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
 
@@ -42,11 +49,6 @@ func (a *App) SetupLogger() {
 	}
 }
 
-func (a App) InitApp() {
-	a.LoadConfig()
-	a.SetupLogger()
-}
-
 func (a App) Migrate() error {
 	a.LoadConfig()
 
@@ -54,4 +56,48 @@ func (a App) Migrate() error {
 
 	err := storage.Migrate(dsn)
 	return err
+}
+
+func (a App) BootstrapDB() (*sqlx.DB, error) {
+	a.LoadConfig()
+
+	dsn := a.cfg.DB.DSN()
+	db, err := storage.BootstrapDB(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to bootstrap database: %w", err)
+	}
+
+	return db, nil
+}
+
+func (a App) MountRouter(db *sqlx.DB) *chi.Mux {
+	router := chi.NewRouter()
+
+	hasher := hasher.BcryptHasher{}
+	authRepo := repository.NewAuthPostgresRepo(db)
+	authController := auth.NewAuthController(auth.NewAuthService(authRepo, hasher, a.logger), a.logger)
+
+	authController.RegisterRoutes(router)
+
+	validator.InitValidator()
+	return router
+}
+
+func (a App) StartServer(router *chi.Mux) {
+	a.logger.Infof("Starting server on %s", a.cfg.Server.Addr)
+	if err := http.ListenAndServe(a.cfg.Server.Addr, router); err != nil {
+		a.logger.Fatalf("Failed to start server: %v", err)
+	}
+}
+
+func (a App) InitApp() {
+	a.LoadConfig()
+	a.SetupLogger()
+	db, err := a.BootstrapDB()
+	if err != nil {
+		a.logger.Fatalf("failed to bootstrap database: %v", err)
+	}
+	router := a.MountRouter(db)
+
+	a.StartServer(router)
 }

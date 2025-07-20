@@ -1,5 +1,10 @@
 package main
 
+import (
+	"crocus-calculator/internal/setting"
+)
+
 func main() {
-	print("Hello, world!")
+	app := setting.App{}
+	app.InitApp()
 }
