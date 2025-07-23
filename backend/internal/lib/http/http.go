@@ -12,3 +12,8 @@ func SendMessage(w http.ResponseWriter, r *http.Request, statusCode int, message
 	render.Status(r, statusCode)
 	render.JSON(w, r, map[string]string{"message": message})
 }
+
+func SendJSON(w http.ResponseWriter, r *http.Request, statusCode int, data map[string]string) {
+	render.Status(r, statusCode)
+	render.JSON(w, r, data)
+}

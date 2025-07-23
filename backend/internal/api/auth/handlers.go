@@ -5,6 +5,7 @@ import (
 	"crocus-calculator/internal/dto"
 	ht "crocus-calculator/internal/lib/http"
 	"net/http"
+	"strconv"
 )
 
 func (c AuthController) RegisterHandler() http.HandlerFunc {
@@ -21,5 +22,41 @@ func (c AuthController) RegisterHandler() http.HandlerFunc {
 
 		ht.SendMessage(w, r, http.StatusOK, "User registered successfully")
 		c.logger.Info("User registered successfully", "login", req.Login)
+	}
+}
+
+func (c AuthController) LoginHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		c.logger.Infof("Handling user login")
+
+		req := r.Context().Value(middleware.DataKey).(dto.LoginRequest)
+
+		tokenPair, err := c.authService.Login(req)
+		if err != nil {
+			ht.SendMessage(w, r, err.StatusCode, err.Error())
+			return
+		}
+
+		access, refresh := tokenPair.Access, tokenPair.Refresh
+
+		// Устанавливаем Refresh Token в HttpOnly-куку
+		http.SetCookie(w, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    refresh.Token,
+			HttpOnly: true,
+			Secure:   true, // Только для HTTPS
+			SameSite: http.SameSiteStrictMode,
+			Path:     "/",
+			MaxAge:   int(refresh.TTL.Seconds()),
+		})
+
+		// Отправляем Access Token в JSON-ответе
+		response := map[string]string{
+			"access_token": access.Token,
+			"token_type":   "Bearer",
+			"expires_in":   strconv.Itoa(int(access.TTL.Seconds())),
+		}
+
+		ht.SendJSON(w, r, http.StatusOK, response)
 	}
 }

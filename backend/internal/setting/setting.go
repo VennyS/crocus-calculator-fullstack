@@ -5,12 +5,14 @@ import (
 	"crocus-calculator/internal/lib/env"
 	"crocus-calculator/internal/lib/hasher"
 	"crocus-calculator/internal/lib/logger"
+	tokenservice "crocus-calculator/internal/lib/tokenService"
 	"crocus-calculator/internal/lib/validator"
 	cfg "crocus-calculator/internal/setting/config"
 	"crocus-calculator/internal/storage"
 	"crocus-calculator/internal/storage/repository"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/jmoiron/sqlx"
@@ -27,6 +29,12 @@ func (a *App) LoadConfig() {
 		AppEnv: env.GetString("APP_ENV", "development"),
 		Server: cfg.ServerConfig{
 			Addr: env.GetString("ADDR", ":8080"),
+		},
+		HTTP: cfg.HTTPConfig{
+			AccessSecret:  env.GetString("HTTP_ACCESS_SECRET", "randomaccesssecret"),
+			RefreshSecret: env.GetString("HTTP_REFRESH_SECRET", "randomrefreshsecret"),
+			AccessTTL:     env.GetDuration("HTTP_ACCESS_TTL", 1*time.Hour),
+			RefreshTTL:    env.GetDuration("HTTP_REFRESH_TTL", 30*24*time.Hour),
 		},
 		DB: cfg.DBConfig{
 			Driver:   env.GetString("DB_DRIVER", "postgres"),
@@ -74,8 +82,10 @@ func (a App) MountRouter(db *sqlx.DB) *chi.Mux {
 	router := chi.NewRouter()
 
 	hasher := hasher.BcryptHasher{}
+	httpConfig := a.cfg.HTTP
+	tknService := tokenservice.NewTokenService(httpConfig.AccessSecret, httpConfig.RefreshSecret, httpConfig.AccessTTL, httpConfig.RefreshTTL)
 	authRepo := repository.NewAuthPostgresRepo(db)
-	authController := auth.NewAuthController(auth.NewAuthService(authRepo, hasher, a.logger), a.logger)
+	authController := auth.NewAuthController(auth.NewAuthService(authRepo, hasher, a.logger, tknService), a.logger)
 
 	authController.RegisterRoutes(router)
 
