@@ -13,6 +13,7 @@ import (
 type AuthService interface {
 	Register(userDTO dto.RegisterRequest) *shared.HttpError
 	Login(LoginRequest dto.LoginRequest) (*tokenservice.TokenPair, *shared.HttpError)
+	Refresh(userID uint) (*tokenservice.TokenPair, *shared.HttpError)
 }
 
 type AuthController struct {
@@ -29,5 +30,6 @@ func (c AuthController) RegisterRoutes(r *chi.Mux) {
 	r.Route("/v1/auth", func(r chi.Router) {
 		r.With(middleware.JsonBodyMiddleware[dto.RegisterRequest](c.logger)).Post("/register", c.RegisterHandler())
 		r.With(middleware.JsonBodyMiddleware[dto.LoginRequest](c.logger)).Post("/login", c.LoginHandler())
+		r.With(middleware.ValidateToken(c.tokenService, c.logger)).Post("/refresh", c.RefreshHandler())
 	})
 }

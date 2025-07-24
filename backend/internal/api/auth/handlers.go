@@ -39,7 +39,6 @@ func (c AuthController) LoginHandler() http.HandlerFunc {
 
 		access, refresh := tokenPair.Access, tokenPair.Refresh
 
-		// Устанавливаем Refresh Token в HttpOnly-куку
 		http.SetCookie(w, &http.Cookie{
 			Name:     "refresh_token",
 			Value:    refresh.Token,
@@ -50,7 +49,40 @@ func (c AuthController) LoginHandler() http.HandlerFunc {
 			MaxAge:   int(refresh.TTL.Seconds()),
 		})
 
-		// Отправляем Access Token в JSON-ответе
+		response := map[string]string{
+			"access_token": access.Token,
+			"token_type":   "Bearer",
+			"expires_in":   strconv.Itoa(int(access.TTL.Seconds())),
+		}
+
+		ht.SendJSON(w, r, http.StatusOK, response)
+	}
+}
+
+func (c AuthController) RefreshHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		c.logger.Infof("Handling refresh")
+
+		userID := r.Context().Value(middleware.UserIDKey).(uint)
+
+		tokenPair, err := c.authService.Refresh(userID)
+		if err != nil {
+			ht.SendMessage(w, r, err.StatusCode, err.Error())
+			return
+		}
+
+		access, refresh := tokenPair.Access, tokenPair.Refresh
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    refresh.Token,
+			HttpOnly: true,
+			Secure:   true, // Только для HTTPS
+			SameSite: http.SameSiteStrictMode,
+			Path:     "/",
+			MaxAge:   int(refresh.TTL.Seconds()),
+		})
+
 		response := map[string]string{
 			"access_token": access.Token,
 			"token_type":   "Bearer",

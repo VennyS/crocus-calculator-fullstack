@@ -33,7 +33,7 @@ func ValidateToken(tokenservice TokenService, logger *zap.SugaredLogger) func(ne
 			}
 
 			// Attach the claims to the request context
-			ctx := context.WithValue(r.Context(), UserIDKey, claims)
+			ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

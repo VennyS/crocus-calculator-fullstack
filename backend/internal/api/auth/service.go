@@ -46,6 +46,8 @@ func NewAuthService(repo AuthRepository, hasher PasswordHasher, logger *zap.Suga
 }
 
 func (s authService) Register(registerDTO dto.RegisterRequest) *shared.HttpError {
+	s.logger.Infof("attempting register user: %s", registerDTO.Login)
+
 	var user = &storage.User{
 		Login:     registerDTO.Login,
 		Password:  registerDTO.Password,
@@ -102,5 +104,16 @@ func (s authService) Login(loginDTO dto.LoginRequest) (*tokenservice.TokenPair, 
 	}
 
 	s.logger.Infof("user logged in successfully: %d", userID)
+	return tokens, nil
+}
+
+func (s authService) Refresh(userID uint) (*tokenservice.TokenPair, *shared.HttpError) {
+	s.logger.Infof("attempting refresh for userID: %s", userID)
+
+	tokens, err := s.tokenService.GenerateTokenPair(userID)
+	if err != nil {
+		return nil, shared.InternalError
+	}
+
 	return tokens, nil
 }
