@@ -16,12 +16,13 @@ type AuthService interface {
 }
 
 type AuthController struct {
-	authService AuthService
-	logger      *zap.SugaredLogger
+	authService  AuthService
+	logger       *zap.SugaredLogger
+	tokenService TokenService
 }
 
-func NewAuthController(authService AuthService, logger *zap.SugaredLogger) *AuthController {
-	return &AuthController{authService: authService, logger: logger}
+func NewAuthController(authService AuthService, logger *zap.SugaredLogger, tokenService TokenService) *AuthController {
+	return &AuthController{authService: authService, logger: logger, tokenService: tokenService}
 }
 
 func (c AuthController) RegisterRoutes(r *chi.Mux) {

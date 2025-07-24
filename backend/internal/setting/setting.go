@@ -85,7 +85,7 @@ func (a App) MountRouter(db *sqlx.DB) *chi.Mux {
 	httpConfig := a.cfg.HTTP
 	tknService := tokenservice.NewTokenService(httpConfig.AccessSecret, httpConfig.RefreshSecret, httpConfig.AccessTTL, httpConfig.RefreshTTL)
 	authRepo := repository.NewAuthPostgresRepo(db)
-	authController := auth.NewAuthController(auth.NewAuthService(authRepo, hasher, a.logger, tknService), a.logger)
+	authController := auth.NewAuthController(auth.NewAuthService(authRepo, hasher, a.logger, tknService), a.logger, tknService)
 
 	authController.RegisterRoutes(router)
 
