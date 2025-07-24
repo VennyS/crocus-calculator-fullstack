@@ -92,3 +92,21 @@ func (c AuthController) RefreshHandler() http.HandlerFunc {
 		ht.SendJSON(w, r, http.StatusOK, response)
 	}
 }
+
+func (c AuthController) LogoutHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		c.logger.Infof("Handling logout")
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    "",
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
+			Path:     "/",
+			MaxAge:   -1,
+		})
+
+		ht.SendMessage(w, r, http.StatusOK, "Logged out successfully")
+	}
+}
